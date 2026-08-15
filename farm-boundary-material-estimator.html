@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Farm Boundary Material Estimator</title>
+<style>
+:root{--g:#176b42;--d:#123b28;--bg:#f2f7f3;--line:#d7e2da;--red:#b3261e}
+*{box-sizing:border-box}body{margin:0;font:15px Arial,sans-serif;background:var(--bg);color:#17251d}
+header{background:linear-gradient(120deg,#123b28,#258653);color:#fff;padding:18px;position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:21px}header small{opacity:.85}.wrap{max-width:1100px;margin:auto;padding:12px 12px 85px}
+.notice{background:#fff2c7;border-left:4px solid #e39a16;padding:10px;margin:8px 0;border-radius:6px;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:10px 0}.card,details{background:#fff;border:1px solid var(--line);border-radius:12px}
+.card{padding:12px}.card span{font-size:12px;color:#607068}.card b{display:block;color:var(--g);font-size:21px;margin-top:4px}
+details{margin:9px 0;overflow:hidden}summary{padding:15px;font-weight:bold;font-size:16px;cursor:pointer;color:var(--d)}
+details[open] summary{border-bottom:1px solid var(--line)}.inside{padding:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+label{display:block;font-weight:bold;font-size:12px;color:#42554a}input,select{width:100%;padding:10px;margin-top:4px;border:1px solid #bdcbbf;border-radius:8px;background:#fff;font-size:16px}
+input[type=checkbox]{width:auto;transform:scale(1.25);margin-right:7px}.checks{display:flex;gap:15px;flex-wrap:wrap;padding-top:8px}
+.result{margin-top:12px;padding:10px;background:#eef7ef;border-radius:8px;line-height:1.6}.table{width:100%;border-collapse:collapse;font-size:13px;margin-top:7px}.table td,.table th{border-bottom:1px solid var(--line);padding:7px;text-align:left}.table th{background:#eaf3eb}
+button{border:0;border-radius:8px;padding:11px 14px;background:var(--g);color:#fff;font-weight:bold;cursor:pointer;font-size:15px}.alt{background:#e4eee6;color:var(--d)}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}.bottom{position:fixed;bottom:0;left:0;right:0;padding:10px;background:#fff;box-shadow:0 -2px 12px #0003}.bottom button{display:block;width:min(600px,100%);margin:auto}
+.error{color:var(--red);font-weight:bold}.calc{white-space:pre-line;background:#f5f8f5;padding:10px;border-radius:8px;font:12px monospace}.good{color:#087336}.bad{color:var(--red)}
+@media(min-width:700px){.cards{grid-template-columns:repeat(4,1fr)}}@media print{header,.bottom,.buttons,.notice{display:none}.wrap{padding:0}.grid{grid-template-columns:repeat(4,1fr)}details{border:0}.inside{padding:5px}.card{padding:6px}}
+</style>
+</head>
+<body>
+<header><h1>Farm Boundary Material Estimator</h1><small>खेत की चारदीवारी सामग्री अनुमानक · Offline estimate</small></header>
+<main class="wrap">
+<div class="notice"><b>NOTE:</b> This is an approximate quantity and cost estimate, not a structural design. Final foundation, RCC reinforcement, pillar size and safety must be verified by a qualified civil/structural engineer according to soil and site conditions.</div>
+<div id="err" class="error"></div>
+<section class="cards">
+ <div class="card"><span>Boundary Length</span><b id="dLen">—</b></div>
+ <div class="card"><span>Wall Area</span><b id="dArea">—</b></div>
+ <div class="card"><span>Total Steel</span><b id="dSteel">—</b></div>
+ <div class="card"><span>Estimated Cost</span><b id="dCost">—</b></div>
+</section>
+<details open><summary>1. Plot / प्लॉट</summary><div class="inside">
+<div class="grid">
+<label>Length<input id="length" type="number" min=".01" value="91"></label>
+<label>Breadth<input id="breadth" type="number" min=".01" value="39"></label>
+<label>Unit<select id="unit"><option value="m">metre</option><option value="ft">feet</option></select></label>
+<div><label>Boundary Sides / बनने वाली साइड</label><div class="checks">
+<label><input id="front" type="checkbox">Front</label><label><input id="back" type="checkbox" checked>Back</label>
+<label><input id="left" type="checkbox" checked>Left</label><label><input id="right" type="checkbox" checked>Right</label>
+</div></div>
+</div><div id="boundary" class="result"></div>
+</div></details>
+<details><summary>2. Wall / दीवार</summary><div class="inside"><div class="grid">
+<label>Wall height (ft)<input id="wallH" type="number" min=".01" value="5"></label>
+<label>Wall thickness (inch)<input id="wallT" type="number" min=".01" value="5"></label>
+<label>Brick length (inch)<input id="brickL" type="number" min=".01" value="9"></label>
+<label>Brick width (inch)<input id="brickW" type="number" min=".01" value="4.5"></label>
+<label>Brick height (inch)<input id="brickH" type="number" min=".01" value="3"></label>
+<label>Mortar joint (mm)<input id="joint" type="number" min="0" value="10"></label>
+<label>Bricks per m³<input id="bpm" type="number" min="1" value="500"></label>
+<label>Brick wastage %<input id="brickWaste" type="number" min="0" value="5"></label>
+<label>Tractor capacity (bricks)<input id="tractor" type="number" min="0" placeholder="optional"></label>
+</div></div></details>
+<details><summary>3. RCC Pillars / खंभे</summary><div class="inside"><div class="grid">
+<label>Pillar spacing (m)<input id="spacing" type="number" min=".1" value="3"></label>
+<label>Pillar width (inch)<input id="pw" type="number" min=".1" value="9"></label>
+<label>Pillar depth (inch)<input id="pd" type="number" min=".1" value="9"></label>
+<label>Above ground height (ft)<input id="pAbove" type="number" min=".1" value="5"></label>
+<label>Foundation depth below ground (ft)<input id="fDepth" type="number" min=".1" value="2.5"></label>
+<label>Foundation width (ft)<input id="fWidth" type="number" min=".1" value="2"></label>
+<label>Foundation length (ft)<input id="fLength" type="number" min=".1" value="2"></label>
+</div><div id="pillars" class="result"></div></div></details>
+<details><summary>4. Foundation / नींव</summary><div class="inside"><div class="grid">
+<label>Foundation type<select id="ftype"><option value="isolated">Isolated footing</option><option value="strip">Continuous strip footing</option><option value="custom">Custom RCC volume</option></select></label>
+<label>Footing thickness (ft)<input id="footT" type="number" min=".01" value="1"></label>
+<label>Strip width (ft)<input id="stripW" type="number" min=".01" value="2"></label>
+<label>Strip depth (ft)<input id="stripD" type="number" min=".01" value="1"></label>
+<label>PCC thickness (inch)<input id="pccT" type="number" min="0" value="4"></label>
+<label>Custom RCC foundation (m³)<input id="customF" type="number" min="0" value="0"></label>
+</div><div id="foundation" class="result"></div></div></details>
+<details><summary>5. Steel / सरिया</summary><div class="inside">
+<h3>Main Vertical Steel</h3><div class="grid">
+<label>Bars per pillar<input id="bars" type="number" min="1" value="4"></label>
+<label>Main diameter<select id="mainDia"><option>8</option><option>10</option><option selected>12</option><option>16</option></select></label>
+<label>Lap/development per bar (m)<input id="lap" type="number" min="0" value=".6"></label>
+<label>Anchorage per bar (m)<input id="anchor" type="number" min="0" value=".4"></label>
+<label>Main steel wastage %<input id="mainWaste" type="number" min="0" value="5"></label>
+</div><h3>Stirrups / Rings</h3><div class="grid">
+<label>Ring diameter<select id="ringDia"><option selected>6</option><option>8</option><option>10</option></select></label>
+<label>Ring width (inch)<input id="ringW" type="number" min=".1" value="7"></label>
+<label>Ring depth (inch)<input id="ringD" type="number" min=".1" value="7"></label>
+<label>Ring spacing (mm)<input id="ringSp" type="number" min="1" value="150"></label>
+<label>Hook allowance per ring (m)<input id="hook" type="number" min="0" value=".2"></label>
+<label>Ring wastage %<input id="ringWaste" type="number" min="0" value="5"></label>
+<label>Standard rod length (m)<input id="rodLen" type="number" min=".1" value="12"></label>
+</div><h3>Optional RCC beam / बीम</h3><label><input id="beamOn" type="checkbox">Include RCC beam</label><div class="grid">
+<label>Beam position<select id="beamType"><option value="1">Plinth OR top beam</option><option value="2">Plinth + top beam</option></select></label>
+<label>Beam width (inch)<input id="beamW" type="number" min=".1" value="9"></label>
+<label>Beam depth (inch)<input id="beamD" type="number" min=".1" value="9"></label>
+<label>Main bar diameter<select id="beamDia"><option>8</option><option selected>10</option><option>12</option><option>16</option></select></label>
+<label>No. main bars<input id="beamBars" type="number" min="1" value="4"></label>
+<label>Stirrup diameter<select id="beamRingDia"><option selected>6</option><option>8</option><option>10</option></select></label>
+<label>Stirrup spacing (mm)<input id="beamRingSp" type="number" min="1" value="150"></label>
+<label>Beam lap allowance (m)<input id="beamLap" type="number" min="0" value="1"></label>
+<label>Beam wastage %<input id="beamWaste" type="number" min="0" value="5"></label>
+</div></div></details>
+<details><summary>6. Concrete &amp; Mortar / कंक्रीट</summary><div class="inside"><div class="grid">
+<label>RCC cement ratio<input id="rc" type="number" min=".01" value="1"></label>
+<label>RCC sand ratio<input id="rs" type="number" min=".01" value="1.5"></label>
+<label>RCC aggregate ratio<input id="ra" type="number" min=".01" value="3"></label>
+<label>RCC dry-volume factor<input id="rdry" type="number" min="1" value="1.54"></label>
+<label>Cement bag volume (m³)<input id="bagVol" type="number" min=".01" value=".0347"></label>
+<label>Cement wastage %<input id="cementWaste" type="number" min="0" value="3"></label>
+<label>Sand wastage %<input id="sandWaste" type="number" min="0" value="5"></label>
+<label>Aggregate wastage %<input id="aggWaste" type="number" min="0" value="5"></label>
+<label>Mortar cement parts<input id="mc" type="number" min=".01" value="1"></label>
+<label>Mortar sand parts<input id="ms" type="number" min=".01" value="6"></label>
+<label>Mortar dry factor<input id="mdry" type="number" min="1" value="1.33"></label>
+</div><div id="concrete" class="result"></div></div></details>
+<details><summary>7. Cost Estimate / लागत</summary><div class="inside"><div class="grid">
+<label>Brick rate / 1000<input id="rBrick" type="number" min="0" value="8000"></label>
+<label>Cement rate / bag<input id="rCement" type="number" min="0" value="450"></label>
+<label>Sand rate / ft³<input id="rSand" type="number" min="0" value="45"></label>
+<label>Aggregate rate / ft³<input id="rAgg" type="number" min="0" value="55"></label>
+<label>6mm steel / kg<input id="r6" type="number" min="0" value="65"></label>
+<label>8mm steel / kg<input id="r8" type="number" min="0" value="65"></label>
+<label>10mm steel / kg<input id="r10" type="number" min="0" value="65"></label>
+<label>12mm steel / kg<input id="r12" type="number" min="0" value="65"></label>
+<label>16mm steel / kg<input id="r16" type="number" min="0" value="65"></label>
+<label>Binding wire / kg<input id="rWire" type="number" min="0" value="80"></label>
+<label>Excavation / m³<input id="rExc" type="number" min="0" value="250"></label>
+<label>Masonry labour / m²<input id="rMason" type="number" min="0" value="180"></label>
+<label>Other labour lump sum<input id="rOther" type="number" min="0" value="0"></label>
+</div><div id="cost" class="result"></div></div></details>
+<details><summary>8. Existing Stock / उपलब्ध सामग्री</summary><div class="inside"><div class="grid">
+<label>6mm available (kg)<input id="s6" type="number" min="0" value="0"></label>
+<label>8mm available (kg)<input id="s8" type="number" min="0" value="0"></label>
+<label>10mm available (kg)<input id="s10" type="number" min="0" value="300"></label>
+<label>12mm available (rods)<input id="s12" type="number" min="0" value="52"></label>
+<label>16mm available (kg)<input id="s16" type="number" min="0" value="0"></label>
+<label>Binding wire available (kg)<input id="sWire" type="number" min="0" value="10"></label>
+<label>Coil diameter<select id="coilDia"><option selected>6</option><option>8</option><option>10</option><option>12</option><option>16</option></select></label>
+<label>Coil available (kg)<input id="coilKg" type="number" min="0" value="100"></label>
+<label>Binding wire % of steel<input id="wirePct" type="number" min="0" value="1.5"></label>
+<label>Manual wire override kg<input id="wireOverride" type="number" min="0" placeholder="optional"></label>
+</div><div id="stock" class="result"></div></div></details>
+<details open><summary>9. Material Shopping List / खरीद सूची</summary><div class="inside"><div id="shopping" class="result">Press CALCULATE.</div></div></details>
+<details><summary>Detailed Calculation / गणना देखें</summary><div class="inside"><div id="calculation" class="calc"></div></div></details>
+<div class="buttons">
+<button onclick="calculate()">Calculate</button><button class="alt" onclick="save()">Save Estimate</button>
+<button class="alt" onclick="load()">Load Saved</button><button class="alt" onclick="localStorage.removeItem('farmEstimate');alert('Saved estimate deleted')">Delete Saved</button>
+<button class="alt" onclick="location.reload()">Reset Sample</button><button class="alt" onclick="window.print()">Print Estimate</button>
+</div>
+</main><div class="bottom"><button onclick="calculate()">CALCULATE / गणना करें</button></div>
+<script>
+const $=x=>document.getElementById(x);
+const num=x=>{let n=parseFloat($(x).value);return isFinite(n)?n:0};
+const ft=x=>x*.3048, inch=x=>x*.0254, kgm=d=>d*d/162, f=x=>Number(x||0).toLocaleString("en-IN",{maximumFractionDigits:2}), up=x=>Math.ceil(x||0);
+function boundary(){
+ let k=$("unit").value==="ft"?.3048:1,L=num("length")*k,B=num("breadth")*k;
+ let sides=[["front",B,"Front"],["back",B,"Back"],["left",L,"Left"],["right",L,"Right"]].filter(x=>$(x[0]).checked);
+ return {L,B,sides,len:sides.reduce((a,x)=>a+x[1],0),formula:sides.map(x=>f(x[1])+"m "+x[2]).join(" + ")};
+}
+function pillars(b){
+ let sp=num("spacing"),points=new Set(),bays=0,ed={front:[[0,0],[b.L,0]],back:[[0,b.B],[b.L,b.B]],left:[[0,0],[0,b.B]],right:[[b.L,0],[b.L,b.B]]};
+ b.sides.forEach(s=>{let q=Math.ceil(s[1]/sp),e=ed[s[0]];bays+=q;for(let i=0;i<=q;i++){let t=i/q,x=e[0][0]+(e[1][0]-e[0][0])*t,y=e[0][1]+(e[1][1]-e[0][1])*t;points.add(x.toFixed(4)+","+y.toFixed(4))}});
+ let h=ft(num("pAbove"))+ft(num("fDepth"));
+ return {n:points.size,bays,avg:b.len/bays,h,vol:points.size*inch(num("pw"))*inch(num("pd"))*h};
+}
+function add(o,d,l){o[d]=(o[d]||0)+l}
+function calculate(){
+ if(num("length")<=0||num("breadth")<=0||num("wallH")<=0||num("wallT")<=0||num("spacing")<=0||!["front","back","left","right"].some(x=>$(x).checked)){ $("err").textContent="Please enter positive dimensions and select at least one boundary side.";return }
+ $("err").textContent="";
+ let b=boundary(),p=pillars(b),steel={6:0,8:0,10:0,12:0,16:0},waste=1+num("mainWaste")/100;
+ let main=p.n*num("bars")*(p.h+num("lap")+num("anchor"))*waste; add(steel,num("mainDia"),main);
+ let rings=Math.ceil(p.h/(num("ringSp")/1000))+1,ringPer=2*(inch(num("ringW"))+inch(num("ringD")))+num("hook");
+ let ringLen=rings*p.n*ringPer*(1+num("ringWaste")/100); add(steel,num("ringDia"),ringLen);
+ let beamVol=0,beamRun=0;
+ if($("beamOn").checked){let mult=num("beamType"),bw=inch(num("beamW")),bd=inch(num("beamD"));beamRun=b.len*mult;beamVol=beamRun*bw*bd;let ww=1+num("beamWaste")/100;add(steel,num("beamDia"),num("beamBars")*(beamRun+num("beamLap")*mult)*ww);add(steel,num("beamRingDia"),(Math.ceil(beamRun/(num("beamRingSp")/1000))+1)*(2*(bw+bd)+.2)*ww)}
+ let type=$("ftype").value,frcc=0,pcc=0,exc=0;
+ if(type==="isolated"){let a=ft(num("fLength"))*ft(num("fWidth"));frcc=p.n*a*ft(num("footT"));pcc=p.n*a*inch(num("pccT"));exc=p.n*a*(ft(num("footT"))+ft(num("fDepth")))}
+ else if(type==="strip"){frcc=b.len*ft(num("stripW"))*ft(num("stripD"));pcc=b.len*ft(num("stripW"))*inch(num("pccT"));exc=b.len*ft(num("stripW"))*(ft(num("stripD"))+ft(num("fDepth")))}
+ else frcc=num("customF");
+ let wallVol=b.len*ft(num("wallH"))*inch(num("wallT")),net=Math.max(0,wallVol-p.vol),bricks=net*num("bpm")*(1+num("brickWaste")/100);
+ let wet=net*.25,dry=wet*num("mdry"),ms=num("mc")+num("ms"),mCement=dry*num("mc")/ms/num("bagVol"),mSand=dry*num("ms")/ms;
+ let rcc=p.vol+frcc+beamVol,rs=num("rc")+num("rs")+num("ra"),rd=rcc*num("rdry");
+ let cCement=rd*num("rc")/rs/num("bagVol")*(1+num("cementWaste")/100),cSand=rd*num("rs")/rs*(1+num("sandWaste")/100),agg=rd*num("ra")/rs*(1+num("aggWaste")/100);
+ let data={},totalSteel=0;[6,8,10,12,16].forEach(d=>{let l=steel[d],kg=l*kgm(d);data[d]={l,kg,rods:l/num("rodLen")};totalSteel+=kg});
+ let wire=num("wireOverride")>0?num("wireOverride"):totalSteel*num("wirePct")/100;
+ let steelCost=[6,8,10,12,16].reduce((a,d)=>a+data[d].kg*num("r"+d),0);
+ let material=bricks/1000*num("rBrick")+(mCement+cCement)*num("rCement")+(mSand+cSand)*35.3147*num("rSand")+agg*35.3147*num("rAgg")+steelCost+wire*num("rWire");
+ let labour=exc*num("rExc")+b.len*ft(num("wallH"))*num("rMason")+num("rOther"),cost=material+labour;
+ $("dLen").textContent=f(b.len)+" m";$("dArea").textContent=f(b.len*ft(num("wallH")))+" m²";$("dSteel").textContent=f(totalSteel)+" kg";$("dCost").textContent="₹"+f(cost);
+ $("boundary").innerHTML="<b>Selected boundary:</b> "+b.formula+" = <b>"+f(b.len)+" m</b>";
+ $("pillars").innerHTML="<b>Total pillars: "+p.n+"</b> · Spacing bays: "+p.bays+" · Average pillar spacing: "+f(p.avg)+" m<br>Pillar RCC volume: "+f(p.vol)+" m³";
+ $("foundation").innerHTML="Foundation type: <b>"+type+"</b><br>Excavation: "+f(exc)+" m³ · PCC: "+f(pcc)+" m³ · RCC foundation: "+f(frcc)+" m³<br><small>Approximate quantity only. Engineer verification is compulsory.</small>";
+ $("concrete").innerHTML="<b>Total RCC:</b> "+f(rcc)+" m³ (Pillars "+f(p.vol)+", Foundation "+f(frcc)+", Beam "+f(beamVol)+")<br>Cement: "+f(cCement)+" bags · Sand: "+f(cSand)+" m³ / "+f(cSand*35.3147)+" ft³ · Aggregate: "+f(agg)+" m³ / "+f(agg*35.3147)+" ft³";
+ let stock={6:num("s6"),8:num("s8"),10:num("s10"),12:num("s12")*num("rodLen")*kgm(12),16:num("s16")};stock[num("coilDia")]+=num("coilKg");
+ $("stock").innerHTML="Coil: "+f(num("coilKg"))+" kg "+num("coilDia")+"mm = "+f(num("coilKg")/kgm(num("coilDia")))+" m = "+f(num("coilKg")/(kgm(num("coilDia"))*num("rodLen")))+" rods equivalent"+
+ "<table class='table'><tr><th>Dia</th><th>Required kg</th><th>Available kg</th><th>Difference</th></tr>"+[6,8,10,12,16].map(d=>{let q=stock[d]-data[d].kg;return "<tr><td>"+d+"mm</td><td>"+f(data[d].kg)+"</td><td>"+f(stock[d])+"</td><td class='"+(q>=0?"good":"bad")+"'>"+(q>=0?"Surplus ":"Shortage ")+f(Math.abs(q))+" kg</td></tr>"}).join("")+"</table>Binding wire: "+f(wire)+" kg required; "+f(num("sWire"))+" kg available.";
+ $("shopping").innerHTML="<h3>MATERIAL SHOPPING LIST</h3><table class='table'><tr><th>Material</th><th>Exact requirement</th><th>Buy rounded up</th></tr>"+
+ "<tr><td>Bricks</td><td>"+f(bricks)+"</td><td><b>"+up(bricks)+" bricks</b></td></tr><tr><td>Cement total</td><td>"+f(mCement+cCement)+" bags</td><td><b>"+up(mCement+cCement)+" bags</b></td></tr><tr><td>Sand total</td><td>"+f(mSand+cSand)+" m³ / "+f((mSand+cSand)*35.3147)+" ft³</td><td><b>"+up((mSand+cSand)*35.3147)+" ft³</b></td></tr><tr><td>Aggregate</td><td>"+f(agg)+" m³ / "+f(agg*35.3147)+" ft³</td><td><b>"+up(agg*35.3147)+" ft³</b></td></tr>"+
+ [6,8,10,12,16].map(d=>"<tr><td>"+d+"mm steel</td><td>"+f(data[d].kg)+" kg / "+f(data[d].rods)+" rods</td><td><b>"+up(data[d].rods)+" rods</b></td></tr>").join("")+
+ "<tr><td>Binding wire</td><td>"+f(wire)+" kg</td><td><b>"+up(wire)+" kg</b></td></tr></table><small>Wastage is included. Deduct existing stock after physically checking it.</small>";
+ $("cost").innerHTML="<b>Material cost: ₹"+f(material)+"</b><br>Labour + excavation: ₹"+f(labour)+"<h3>Estimated Total Project Cost: ₹"+f(cost)+"</h3>Cost/running m: ₹"+f(cost/b.len)+" · Cost/m² wall: ₹"+f(cost/(b.len*ft(num("wallH"))))+" · Cost/ft²: ₹"+f(cost/(b.len*ft(num("wallH"))*10.7639));
+ $("calculation").textContent="BOUNDARY\n"+b.formula+" = "+f(b.len)+" m\n\nWALL AREA\n"+f(b.len)+" × "+f(ft(num("wallH")))+" = "+f(b.len*ft(num("wallH")))+" m²\n\nPILLARS\nUnique corner/end pillars after deduplication = "+p.n+"\nAverage spacing = "+f(b.len)+" / "+p.bays+" = "+f(p.avg)+" m\n\nMAIN STEEL\n"+p.n+" pillars × "+num("bars")+" bars × ("+f(p.h)+"m pillar + "+num("lap")+"m lap + "+num("anchor")+"m anchorage) = "+f(main)+" m\n\nSTIRRUPS\n"+rings+" rings/pillar × "+p.n+" pillars × "+f(ringPer)+"m/ring = "+f(ringLen)+" m\n\nUNIT WEIGHT\nkg/m = d² / 162. "+num("mainDia")+"mm = "+f(kgm(num("mainDia")))+" kg/m.\n\nThis is an approximate material estimator, NOT a structural design.";
+}
+function save(){let o={};document.querySelectorAll("input,select").forEach(e=>o[e.id]=e.type==="checkbox"?e.checked:e.value);localStorage.setItem("farmEstimate",JSON.stringify(o));alert("Estimate saved offline on this device.")}
+function load(){let o=JSON.parse(localStorage.getItem("farmEstimate")||"null");if(!o)return alert("No saved estimate found.");Object.entries(o).forEach(([k,v])=>{if($(k))$(k).type==="checkbox"?$(k).checked=v:$(k).value=v});calculate()}
+calculate();
+</script>
+</body>
+</html>
